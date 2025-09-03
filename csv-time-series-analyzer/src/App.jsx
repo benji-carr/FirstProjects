@@ -10,6 +10,9 @@ function App() {
   const [error, setError] = useState('');
   const [uploadStatus, setUploadStatus] = useState('');
   const [selectedModel, setSelectedModel] = useState('ARIMA');
+  const [columns, setColumns] = useState([]);
+  const [selectedTimeColumn, setSelectedTimeColumn] = useState('');
+  const [selectedValueColumn, setSelectedValueColumn] = useState('');
 
   const handleFileUpload = (event) => {
     const uploadedFile = event.target.files[0];
@@ -24,6 +27,10 @@ function App() {
         const text = e.target.result;
         const lines = text.split('\n').slice(0, 5); // Show first 5 lines
         setCsvData(lines);
+        if (lines.length > 0) {
+        const headers = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
+        setColumns(headers);
+        }
       };
       reader.readAsText(uploadedFile);
     } else {
@@ -31,12 +38,15 @@ function App() {
       setFile(null);
       setCsvData(null);
       setUploadStatus('');
+      setColumns([]);
+      setSelectedTimeColumn('');
+      setSelectedValueColumn('');
     }
   };
 
   const handleSubmit = async () => {
-    if (!file || !prompt.trim()) {
-      setError('Please upload a CSV file and enter a prompt');
+    if (!file || !prompt.trim() || !selectedTimeColumn || !selectedValueColumn) {
+      setError('Please upload a CSV file, select time and value columns, and enter a prompt');
       return;
     }
 
@@ -48,6 +58,8 @@ function App() {
       formData.append('csv_file', file);
       formData.append('prompt', prompt);
       formData.append('model', selectedModel);
+      formData.append('time_column', selectedTimeColumn);
+      formData.append('value_column', selectedValueColumn);
 
       // This would connect to your Python backend
       const response = await fetch('/api/process-csv', {
@@ -144,6 +156,61 @@ function App() {
               </div>
             )}
 
+            {/* Column Selection - appears after CSV upload */}
+            {columns.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Time Column Selection */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-blue-800 mb-3">Select Time Column</h3>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {columns.map((column, index) => (
+                      <label key={index} className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="timeColumn"
+                          value={column}
+                          checked={selectedTimeColumn === column}
+                          onChange={(e) => setSelectedTimeColumn(e.target.value)}
+                          className="text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">{column}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {selectedTimeColumn && (
+                    <div className="mt-3 p-2 bg-blue-100 rounded text-sm text-blue-700">
+                      Selected: <strong>{selectedTimeColumn}</strong>
+                    </div>
+                  )}
+                </div>
+
+                {/* Value Column Selection */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-green-800 mb-3">Select Value Column</h3>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {columns.map((column, index) => (
+                      <label key={index} className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="valueColumn"
+                          value={column}
+                          checked={selectedValueColumn === column}
+                          onChange={(e) => setSelectedValueColumn(e.target.value)}
+                          className="text-green-600 focus:ring-green-500"
+                        />
+                        <span className="text-sm text-gray-700">{column}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {selectedValueColumn && (
+                    <div className="mt-3 p-2 bg-green-100 rounded text-sm text-green-700">
+                      Selected: <strong>{selectedValueColumn}</strong>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Prompt Input */}
             <div className="space-y-4">
               <div>
@@ -162,7 +229,7 @@ function App() {
 
               <button
                 onClick={handleSubmit}
-                disabled={loading || !file || !prompt.trim()}
+                disabled={loading || !file || !prompt.trim() || !selectedTimeColumn || !selectedValueColumn}
                 className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {loading ? (

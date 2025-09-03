@@ -11,21 +11,25 @@ def process_csv():
         csv_file = request.files['csv_file']
         prompt = request.form['prompt']
         model = request.form['model']
+        time_column = request.form.get('time_column')
+        value_column = request.form.get('value_column')
         
         # Read CSV
         df = pd.read_csv(csv_file)
         
-        # Simple mock response based on model
-        responses = {
-            'ARIMA': f"ARIMA analysis completed for {len(df)} data points.\n\nPrompt: {prompt}\n\nSample analysis: The time series shows trend patterns that can be modeled using ARIMA parameters. Recommended next steps include parameter optimization and forecast validation.",
-            'SARIMA': f"SARIMA seasonal analysis completed for {len(df)} data points.\n\nPrompt: {prompt}\n\nSample analysis: Seasonal patterns detected in the data. SARIMA model can capture both trend and seasonal components for improved forecasting accuracy.",
-            'GARCH': f"GARCH volatility analysis completed for {len(df)} data points.\n\nPrompt: {prompt}\n\nSample analysis: Volatility clustering patterns identified. GARCH model can help predict conditional variance and risk measures in financial time series."
-        }
+        # Enhanced response with column information
+        response_text = f"{model} analysis completed for {len(df)} data points.\n\n"
+        response_text += f"Time Column: {time_column}\n"
+        response_text += f"Value Column: {value_column}\n\n"
+        response_text += f"User Question: {prompt}\n\n"
+        response_text += "Analysis: Ready to process time series data with selected columns."
         
         return jsonify({
-            "response": responses.get(model, "Analysis completed"),
-            "data_shape": df.shape,
-            "columns": df.columns.tolist()
+            "response": response_text,
+            "columns_used": {
+                "time": time_column,
+                "value": value_column
+            }
         })
         
     except Exception as e:
