@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Upload, FileText, Send, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Upload, FileText, Send, Loader2, AlertCircle, CheckCircle, Download, Camera } from 'lucide-react';
+import './App.css'; // Make sure you're importing your CSS
 
 function App() {
   const [file, setFile] = useState(null);
   const [csvData, setCsvData] = useState(null);
-  const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -13,6 +13,8 @@ function App() {
   const [columns, setColumns] = useState([]);
   const [selectedTimeColumn, setSelectedTimeColumn] = useState('');
   const [selectedValueColumn, setSelectedValueColumn] = useState('');
+  const [predictionPeriod, setPredictionPeriod] = useState('');
+  const [predictionResult, setPredictionResult] = useState('');
 
   const handleFileUpload = (event) => {
     const uploadedFile = event.target.files[0];
@@ -21,15 +23,17 @@ function App() {
       setError('');
       setUploadStatus('File ready for processing');
       
-      // Preview CSV content
+      // Preview CSV content and extract columns
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target.result;
-        const lines = text.split('\n').slice(0, 5); // Show first 5 lines
+        const lines = text.split('\n').slice(0, 5);
         setCsvData(lines);
+        
+        // Extract column names from first line (header)
         if (lines.length > 0) {
-        const headers = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
-        setColumns(headers);
+          const headers = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
+          setColumns(headers);
         }
       };
       reader.readAsText(uploadedFile);
@@ -45,8 +49,8 @@ function App() {
   };
 
   const handleSubmit = async () => {
-    if (!file || !prompt.trim() || !selectedTimeColumn || !selectedValueColumn) {
-      setError('Please upload a CSV file, select time and value columns, and enter a prompt');
+    if (!file || !selectedTimeColumn || !selectedValueColumn) {
+      setError('Please upload a CSV file and select both time and value columns');
       return;
     }
 
@@ -56,12 +60,10 @@ function App() {
     try {
       const formData = new FormData();
       formData.append('csv_file', file);
-      formData.append('prompt', prompt);
       formData.append('model', selectedModel);
       formData.append('time_column', selectedTimeColumn);
       formData.append('value_column', selectedValueColumn);
 
-      // This would connect to your Python backend
       const response = await fetch('/api/process-csv', {
         method: 'POST',
         body: formData,
@@ -72,12 +74,42 @@ function App() {
       }
 
       const result = await response.json();
-      setResponse(result.response || 'Processing complete');
+      setResponse(result.response || 'Analysis complete');
     } catch (err) {
       setError(`Error: ${err.message}. Make sure your Python backend is running on the expected endpoint.`);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExportPNG = () => {
+    // Placeholder for PNG export functionality
+    console.log('Export to PNG clicked');
+    alert('PNG export functionality would be implemented here');
+  };
+
+  const handleExportJPEG = () => {
+    // Placeholder for JPEG export functionality
+    console.log('Export to JPEG clicked');
+    alert('JPEG export functionality would be implemented here');
+  };
+
+  const handleExportCSV = () => {
+    // Placeholder for CSV export functionality
+    console.log('Export Table to CSV clicked');
+    alert('CSV export functionality would be implemented here');
+  };
+
+  const handleFindPrediction = () => {
+    // Placeholder for single prediction functionality
+    if (!predictionPeriod || predictionPeriod < 1) {
+      alert('Please enter a valid period number');
+      return;
+    }
+    
+    console.log('Find Singular Predicted Value clicked for period:', predictionPeriod);
+    // This would typically make an API call to get a specific prediction
+    setPredictionResult(`Predicted value for period ${predictionPeriod}: 123.45`);
   };
 
   return (
@@ -107,9 +139,7 @@ function App() {
                 <p className="text-lg font-medium text-gray-700">
                   {file ? file.name : 'Click to upload CSV file'}
                 </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  CSV files only
-                </p>
+                <p className="text-sm text-gray-500 mt-1">CSV files only</p>
               </label>
               
               {uploadStatus && (
@@ -142,6 +172,7 @@ function App() {
               </p>
             </div>
 
+              
             {/* CSV Preview */}
             {csvData && (
               <div className="bg-gray-50 rounded-lg p-4">
@@ -156,10 +187,9 @@ function App() {
               </div>
             )}
 
-            {/* Column Selection - appears after CSV upload */}
+            {/* Column Selection */}
             {columns.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Time Column Selection */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h3 className="font-semibold text-blue-800 mb-3">Select Time Column</h3>
                   <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -184,7 +214,6 @@ function App() {
                   )}
                 </div>
 
-                {/* Value Column Selection */}
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <h3 className="font-semibold text-green-800 mb-3">Select Value Column</h3>
                   <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -211,36 +240,22 @@ function App() {
               </div>
             )}
 
-            {/* Prompt Input */}
+            {/* Analysis Button */}
             <div className="space-y-4">
-              <div>
-                <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
-                  Ask a question about your data:
-                </label>
-                <textarea
-                  id="prompt"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="e.g., 'Forecast the next 12 periods' or 'Analyze the volatility patterns in this time series'"
-                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                  rows={4}
-                />
-              </div>
-
               <button
                 onClick={handleSubmit}
-                disabled={loading || !file || !prompt.trim() || !selectedTimeColumn || !selectedValueColumn}
+                disabled={loading || !file || !selectedTimeColumn || !selectedValueColumn}
                 className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Processing...
+                    Analyzing...
                   </>
                 ) : (
                   <>
                     <Send className="w-5 h-5" />
-                    Analyze with {selectedModel}
+                    Run {selectedModel} Analysis
                   </>
                 )}
               </button>
@@ -269,16 +284,89 @@ function App() {
                 </div>
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Backend Instructions */}
-        <div className="mt-6 bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-3">Backend Setup Required</h2>
-          <p className="text-gray-600 text-sm">
-            This React app expects a Python backend at <code className="bg-gray-100 px-1 rounded">/api/process-csv</code>. 
-            The backend should accept POST requests with a CSV file, prompt, and selected model (ARIMA/SARIMA/GARCH), then return JSON with the analysis results.
-          </p>
+            {/* Graph Display */}
+            {response && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-800 mb-4">Time Series Graph</h3>
+                <div id="chart-container" className="w-full h-96 bg-gray-50 rounded border flex items-center justify-center text-gray-500">
+                  <div className="text-center">
+                    <FileText className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                    <p>Chart will be displayed here</p>
+                    <p className="text-sm mt-1">Graph visualization pending implementation</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Export Buttons */}
+            {response && (
+              <div className="space-y-3">
+                <button
+                  onClick={handleExportPNG}
+                  className="w-full bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Camera className="w-5 h-5" />
+                  Export to PNG
+                </button>
+                
+                <button
+                  onClick={handleExportJPEG}
+                  className="w-full bg-orange-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Camera className="w-5 h-5" />
+                  Export to JPEG
+                </button>
+                
+                <button
+                  onClick={handleExportCSV}
+                  className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Download className="w-5 h-5" />
+                  Export Table to CSV
+                </button>
+              </div>
+            )}
+
+            {/* Singular Prediction */}
+            {response && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-800 mb-4">Singlular Value Prediction</h3>
+                <div className="flex gap-4 mb-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Enter period number:
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={predictionPeriod}
+                      onChange={(e) => setPredictionPeriod(e.target.value)}
+                      placeholder="e.g., 5"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Predicted value:
+                    </label>
+                    <div className="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-700">
+                      {predictionResult || 'Result will appear here'}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-center">
+                  <button
+                    onClick={handleFindPrediction}
+                    className="bg-indigo-600 text-white py-2 px-6 rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                  >
+                    <Send className="w-4 h-4" />
+                    Find Singular Predicted Value
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
