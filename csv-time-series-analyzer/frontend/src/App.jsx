@@ -10,6 +10,7 @@ function App() {
   const [error, setError] = useState('');
   const [uploadStatus, setUploadStatus] = useState('');
   const [selectedModel, setSelectedModel] = useState('ARIMA');
+  const [lastAnalyzedModel, setLastAnalyzedModel] = useState('');
   const [columns, setColumns] = useState([]);
   const [selectedTimeColumn, setSelectedTimeColumn] = useState('');
   const [selectedValueColumn, setSelectedValueColumn] = useState('');
@@ -49,38 +50,43 @@ function App() {
   };
 
   const handleSubmit = async () => {
-    if (!file || !selectedTimeColumn || !selectedValueColumn) {
-      setError('Please upload a CSV file and select both time and value columns');
-      return;
+  if (!file || !selectedTimeColumn || !selectedValueColumn) {
+    setError('Please upload a CSV file and select both time and value columns');
+    return;
+  }
+
+  // Clear previous results each time Analyze is clicked
+  setResponse('');
+  setError('');
+  setPredictionResult('');
+  setLoading(true);
+
+  try {
+    const formData = new FormData();
+    formData.append('csv_file', file);
+    formData.append('model', selectedModel);
+    formData.append('time_column', selectedTimeColumn);
+    formData.append('value_column', selectedValueColumn);
+
+    const response = await fetch('/api/process-csv', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    setLoading(true);
-    setError('');
-    
-    try {
-      const formData = new FormData();
-      formData.append('csv_file', file);
-      formData.append('model', selectedModel);
-      formData.append('time_column', selectedTimeColumn);
-      formData.append('value_column', selectedValueColumn);
+    const result = await response.json();
+    setResponse(result.response || 'Analysis complete');
+    setLastAnalyzedModel(selectedModel); // ✅ only update this when analysis succeeds
+  } catch (err) {
+    setError(`Error: ${err.message}. Make sure your Python backend is running on the expected endpoint.`);
+  } finally {
+    setLoading(false);
+  }
+};
 
-      const response = await fetch('/api/process-csv', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      setResponse(result.response || 'Analysis complete');
-    } catch (err) {
-      setError(`Error: ${err.message}. Make sure your Python backend is running on the expected endpoint.`);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleExportPNG = () => {
     // Placeholder for PNG export functionality
@@ -171,7 +177,6 @@ function App() {
                 {selectedModel === 'GARCH' && 'Specialized for financial volatility modeling'}
               </p>
             </div>
-
               
             {/* CSV Preview */}
             {csvData && (
@@ -190,23 +195,21 @@ function App() {
             {/* Column Selection */}
             {columns.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Time Column Dropdown */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h3 className="font-semibold text-blue-800 mb-3">Select Time Column</h3>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                  <select
+                    value={selectedTimeColumn}
+                    onChange={(e) => setSelectedTimeColumn(e.target.value)}
+                    className="w-full p-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  >
+                    <option value="">-- Select Time Column --</option>
                     {columns.map((column, index) => (
-                      <label key={index} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="timeColumn"
-                          value={column}
-                          checked={selectedTimeColumn === column}
-                          onChange={(e) => setSelectedTimeColumn(e.target.value)}
-                          className="text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700">{column}</span>
-                      </label>
+                      <option key={index} value={column}>
+                        {column}
+                      </option>
                     ))}
-                  </div>
+                  </select>
                   {selectedTimeColumn && (
                     <div className="mt-3 p-2 bg-blue-100 rounded text-sm text-blue-700">
                       Selected: <strong>{selectedTimeColumn}</strong>
@@ -214,23 +217,21 @@ function App() {
                   )}
                 </div>
 
+                {/* Value Column Dropdown */}
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <h3 className="font-semibold text-green-800 mb-3">Select Value Column</h3>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                  <select
+                    value={selectedValueColumn}
+                    onChange={(e) => setSelectedValueColumn(e.target.value)}
+                    className="w-full p-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
+                  >
+                    <option value="">-- Select Value Column --</option>
                     {columns.map((column, index) => (
-                      <label key={index} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="valueColumn"
-                          value={column}
-                          checked={selectedValueColumn === column}
-                          onChange={(e) => setSelectedValueColumn(e.target.value)}
-                          className="text-green-600 focus:ring-green-500"
-                        />
-                        <span className="text-sm text-gray-700">{column}</span>
-                      </label>
+                      <option key={index} value={column}>
+                        {column}
+                      </option>
                     ))}
-                  </div>
+                  </select>
                   {selectedValueColumn && (
                     <div className="mt-3 p-2 bg-green-100 rounded text-sm text-green-700">
                       Selected: <strong>{selectedValueColumn}</strong>
@@ -239,6 +240,7 @@ function App() {
                 </div>
               </div>
             )}
+
 
             {/* Analysis Button */}
             <div className="space-y-4">
@@ -277,8 +279,11 @@ function App() {
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h3 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
                   <CheckCircle className="w-5 h-5" />
-                  {selectedModel} Analysis Results:
+                  {lastAnalyzedModel
+                    ? `${lastAnalyzedModel} Analysis Results:`
+                    : 'Analysis Results:'}
                 </h3>
+
                 <div className="text-green-700 whitespace-pre-wrap bg-white p-4 rounded border">
                   {response}
                 </div>
