@@ -9,7 +9,11 @@ const upload = multer({ dest: "uploads/" });
 
 app.post("/api/process-csv", upload.single("csv_file"), (req, res) => {
   const { model, time_column, value_column } = req.body;
-
+  if (!req.file) {
+    return res.status(400).json({ error: "CSV file missing" });
+  }
+  console.log("Running model:", model);
+  console.log("File path:", req.file.path);
   const py = spawn("python", [
     "analyzer.py",
     req.file.path,
