@@ -68,7 +68,7 @@ function App() {
     formData.append('time_column', selectedTimeColumn);
     formData.append('value_column', selectedValueColumn);
 
-    const response = await fetch('/api/process-csv', {
+    const response = await fetch('https://csv-analyzer-mdep.onrender.com/api/process-csv', {
       method: 'POST',
       body: formData,
     });

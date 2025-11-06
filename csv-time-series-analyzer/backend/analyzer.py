@@ -12,14 +12,14 @@ series = df[value_col]
 if model == "ARIMA":
     model = sm.tsa.ARIMA(series, order=(1, 1, 1))
     results = model.fit()
-    print(results.summary())
+    print("Model training complete.")
 elif model == "SARIMA":
     model = sm.tsa.statespace.SARIMAX(series, order=(1, 1, 1), seasonal_order=(1,1,1,12))
     results = model.fit()
-    print(results.summary())
+    print("Model training complete.")
 elif model == "GARCH":
     model = arch_model(series, vol="Garch", p=1, q=1)
     results = model.fit(disp="off")
-    print(results.summary())
+    print("Model training complete.")
 else:
     print("Unknown model")
