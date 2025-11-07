@@ -18,6 +18,7 @@ app.post("/api/process-csv", upload.single("csv_file"), (req, res) => {
   console.log("File path:", req.file.path);
 
   const py = spawn("python", [
+    "-u",
     "analyzer.py",
     req.file.path,
     model,

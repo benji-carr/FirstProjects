@@ -3,23 +3,33 @@ import pandas as pd
 import statsmodels.api as sm
 from arch import arch_model
 
-# Args: file, model, time_column, value_column
 file, model, time_col, value_col = sys.argv[1:5]
 
+print(f"Loading {file}", flush=True)
 df = pd.read_csv(file)
-series = df[value_col]
+print(f"Columns: {df.columns.tolist()}", flush=True)
 
-if model == "ARIMA":
-    model = sm.tsa.ARIMA(series, order=(1, 1, 1))
-    results = model.fit()
-    print("Model training complete.")
-elif model == "SARIMA":
-    model = sm.tsa.statespace.SARIMAX(series, order=(1, 1, 1), seasonal_order=(1,1,1,12))
-    results = model.fit()
-    print("Model training complete.")
-elif model == "GARCH":
-    model = arch_model(series, vol="Garch", p=1, q=1)
-    results = model.fit(disp="off")
-    print("Model training complete.")
-else:
-    print("Unknown model")
+series = df[value_col].dropna()#.iloc[-200:]
+print(f"Series length: {len(series)}", flush=True)
+
+try:
+    if model == "ARIMA":
+        print("Fitting ARIMA...", flush=True)
+        fit = sm.tsa.ARIMA(series, order=(1, 1, 1)).fit()
+    elif model == "SARIMA":
+        print("Fitting SARIMA...", flush=True)
+        fit = sm.tsa.statespace.SARIMAX(series, order=(1, 1, 1),
+                                        seasonal_order=(1, 1, 1, 12)).fit(disp=False)
+    elif model == "GARCH":
+        print("Fitting GARCH...", flush=True)
+        fit = arch_model(series, vol="Garch", p=1, q=1).fit(disp="off")
+    else:
+        print("Unknown model", flush=True)
+        sys.exit(1)
+
+    print("Model training complete.", flush=True)
+    print(fit.summary(), flush=True)
+
+except Exception as e:
+    print(f"Error: {str(e)}", flush=True)
+    sys.exit(1)
