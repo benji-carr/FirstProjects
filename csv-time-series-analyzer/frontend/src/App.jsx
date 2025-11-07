@@ -284,7 +284,7 @@ function App() {
                     : 'Analysis Results:'}
                 </h3>
 
-                <div className="text-green-700 whitespace-pre-wrap bg-white p-4 rounded border">
+                <div className="text-green-700 whitespace-pre-wrap break-words overflow-x-auto bg-white p-4 rounded border font-mono text-sm">
                   {response}
                 </div>
               </div>
