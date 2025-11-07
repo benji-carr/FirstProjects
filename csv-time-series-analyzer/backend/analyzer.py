@@ -8,7 +8,8 @@ file, model, time_col, value_col = sys.argv[1:5]
 print(f"Loading {file}", flush=True)
 df = pd.read_csv(file)
 print(f"Columns: {df.columns.tolist()}", flush=True)
-
+df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
+df = df.set_index(time_col).sort_index()
 series = df[value_col].dropna().iloc[-200:]
 print(f"Series length: {len(series)}", flush=True)
 
@@ -28,7 +29,8 @@ try:
         sys.exit(1)
 
     print("Model training complete.", flush=True)
-    print(fit.summary(), flush=True)
+    summary_text = fit.summary().as_text()
+    print(summary_text[:5000], flush=True)
 
 except Exception as e:
     print(f"Error: {str(e)}", flush=True)
