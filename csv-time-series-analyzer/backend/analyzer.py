@@ -9,7 +9,7 @@ print(f"Loading {file}", flush=True)
 df = pd.read_csv(file)
 print(f"Columns: {df.columns.tolist()}", flush=True)
 
-series = df[value_col].dropna()#.iloc[-200:]
+series = df[value_col].dropna().iloc[-200:]
 print(f"Series length: {len(series)}", flush=True)
 
 try:
