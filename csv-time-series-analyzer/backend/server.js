@@ -9,10 +9,7 @@ const upload = multer({ dest: "uploads/" });
 
 app.post("/api/process-csv", upload.single("csv_file"), (req, res) => {
   const { model, time_column, value_column } = req.body;
-
-  if (!req.file) {
-    return res.status(400).json({ error: "CSV file missing" });
-  }
+  if (!req.file) return res.status(400).json({ error: "CSV file missing" });
 
   console.log("Running model:", model);
   console.log("File path:", req.file.path);
@@ -28,8 +25,8 @@ app.post("/api/process-csv", upload.single("csv_file"), (req, res) => {
 
   let data = "";
   let error = "";
+  let responded = false;
 
-  // Capture stdout & stderr
   py.stdout.on("data", (chunk) => {
     const text = chunk.toString();
     data += text;
@@ -42,15 +39,19 @@ app.post("/api/process-csv", upload.single("csv_file"), (req, res) => {
     console.error("[PYTHON ERROR]:", text.trim());
   });
 
-  // Handle Python process start errors
   py.on("error", (err) => {
     console.error("Failed to start Python process:", err);
-    res.status(500).json({ error: "Python process failed to start" });
+    if (!responded) {
+      responded = true;
+      res.status(500).json({ error: "Python process failed to start" });
+    }
   });
 
-  // Handle Python exit (success or failure)
   py.on("close", (code) => {
     console.log("Python exited with code:", code);
+    if (responded) return;
+
+    responded = true;
     if (code !== 0) {
       console.error("Python error:", error);
       return res.status(500).json({ error: error || "Python script failed" });
@@ -58,15 +59,19 @@ app.post("/api/process-csv", upload.single("csv_file"), (req, res) => {
     res.json({ response: data || "No output received from Python script." });
   });
 
-  // Timeout safeguard (2 min)
-  setTimeout(() => {
+  // Optional: gentle timeout safeguard
+  const killTimer = setTimeout(() => {
+    if (responded) return;
     console.error("Python script timed out. Killing process...");
-    py.kill();
-    if (!res.headersSent) {
-      res.status(504).json({ error: "Python script timed out" });
-    }
-  }, 120000); // 2 minutes
+    py.kill("SIGTERM");
+    responded = true;
+    res.status(504).json({ error: "Python script timed out" });
+  }, 300000); // 5 minutes
+
+  // Cleanup timeout if process exits normally
+  py.on("exit", () => clearTimeout(killTimer));
 });
+
 
 app.listen(process.env.PORT || 8080, () => {
   console.log("Server running on port 8080");
